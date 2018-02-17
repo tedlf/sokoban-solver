@@ -468,7 +468,10 @@ def reverse(a):
 #
 #-----------------------------------------------------------------------------------------
 def solution_filename(opts):
-    directory = 'solutions'
+    if opts.flash:
+        directory = 'flash_solutions'
+    else:
+        directory = 'solutions'
     if opts.filename.endswith('.txt'):
         return os.path.join(directory, opts.filename.replace('.txt', '_solution.txt'))
     else:
@@ -748,6 +751,98 @@ def search(start, board, opts):
 
 
 #-----------------------------------------------------------------------------------------
+# Conduct a breadth first search in a two step process:
+#   1) Conduct a breadth first search for all positions that can be reached without pushing any boxes.
+#   2) From each state, explore all possible box pushes.
+#-----------------------------------------------------------------------------------------
+def flash_search(start, board, opts):
+    goal = len(board.targets)
+    total_visited = 0
+    #total_visited_by_push = 0
+    explored = set()
+    explored.add(start.signature())
+    q = queue.Queue()
+    #q.put(start)
+    q.put(start.full_description(board))
+
+    # This function is named after 'The Flash' because he can go anywhere nearly instantaneously.
+    def add_flash_states(t):
+        flash_explored = set()
+        flash_explored.add(t.signature())
+        flash_q = queue.Queue()
+        flash_q.put(t)
+        while not flash_q.empty():
+            u = flash_q.get()
+            for direction in [U, R, D, L]:
+                new_position = move(u.person, direction)
+                if board.legal_position(new_position) and new_position not in u.boxes:
+                    new_state = State(new_position, u.boxes, u.history + DIRECTION_NAME[direction])
+                    new_signature = new_state.signature()
+                    if new_signature not in flash_explored:
+                        flash_explored.add(new_signature)
+                        flash_q.put(new_state)
+                        if new_signature not in explored:
+                            # Only add this state to the primary queue if it is next to a box that can be pushed.
+                            for direction2 in [U, R, D, L]:
+                                second_position = move(new_position, direction2)
+                                if second_position in u.boxes:
+                                    across = move(second_position, direction2)
+                                    if board.legal_position(across) and across not in new_state.boxes:
+                                        new_boxes = new_state.boxes[:]
+                                        new_boxes.remove(second_position)
+                                        new_boxes.append(across)
+                                        if not board.dead_end(direction2, across, new_boxes):
+                                            explored.add(new_signature)
+                                            q.put(new_state.full_description(board))
+                                            break
+
+    # Add all states that can be reached without pushing any boxes, but that
+    # move the person next to a box that can be pushed.
+    add_flash_states(start)
+
+    while not q.empty():
+        t = State(board, q.get())
+        total_visited += 1
+        if opts.show_board:
+            board.print_current(t, opts.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited))
+            pause(opts.interval)
+        elif total_visited % opts.print_interval == 0:
+            if opts.level:
+                board.print_current(t, opts.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited), False)
+                print_history(t.history)
+                print()
+            else:
+                print('Time: {}  Depth: {:,}  Queue: {:,}  Visited: {:,}'.format(datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited))
+        for direction in [U, R, D, L]:
+            new_position = move(t.person, direction)
+            # Only consider moves that push a box.
+            if board.legal_position(new_position) and new_position in t.boxes:
+                across = move(new_position, direction)
+                if board.legal_position(across) and across not in t.boxes:
+                    new_boxes = t.boxes[:]
+                    new_boxes.remove(new_position)
+                    new_boxes.append(across)
+                    if len(board.targets & set(new_boxes)) == goal:
+                        # Solved!
+                        final_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
+                        board.print_current(final_state, opts.text_output, (datetime.now().strftime('%H:%M:%S'), len(final_state.history), q.qsize(), total_visited + 1), opts.show_board)
+                        print('Solved!')
+                        print_solution(opts, final_state.history)
+                        sys.exit()
+                    elif not board.dead_end(direction, across, new_boxes):
+                        new_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
+                        new_signature = new_state.signature()
+                        if new_signature not in explored:
+                            #total_visited_by_push += 1
+                            explored.add(new_signature)
+                            q.put(new_state.full_description(board))
+                            # Add all states that can be reached without pushing any boxes.
+                            add_flash_states(new_state)
+
+    print('No solution found. Check the input file.')
+
+
+#-----------------------------------------------------------------------------------------
 #
 #-----------------------------------------------------------------------------------------
 if __name__ == '__main__':
@@ -767,6 +862,7 @@ if __name__ == '__main__':
     parser.add_option('-v', '--view', action='store_true', default=False, help='View level and quit')
     parser.add_option('-z', '--user-solution', default='', help='User supplied solution string or file name')
     parser.add_option('--enforce', action='store_true', default=False, help='Do not allow dead end moves in user mode')
+    parser.add_option('--flash', action='store_true', default=False, help="Search in 'flash' mode.")
     parser.add_option('--size', dest='size', help="'Size of new file to edit, in format 'NX,NY'")
     opts, _ = parser.parse_args()
 
@@ -784,6 +880,8 @@ if __name__ == '__main__':
         edit_level(start, board, opts)
     elif opts.solution:
         show_solution(start, board, opts)
+    elif opts.flash:
+        flash_search(start, board, opts)
     else:
         search(start, board, opts)
 
