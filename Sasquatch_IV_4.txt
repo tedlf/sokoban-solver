@@ -1,0 +1,10 @@
+_ _ W W W W W W _
+_ _ W _ _ T _ W W
+_ _ W _ W b _ _ W
+_ _ W _ B T B _ W
+_ _ W W _ b T _ W
+_ W W _ B T P _ W
+W W _ W _ T B _ W
+W _ _ B B T W _ W
+W _ _ _ _ _ _ W W
+W W W W W W W W _

@@ -1,0 +1,9 @@
+W W W W W W W W _ W W W W W
+W _ _ W _ _ _ W W W _ _ _ W
+W _ _ _ _ _ _ W W _ B _ _ W
+W T W _ P _ W W _ B _ _ W W
+W T W _ _ _ W _ B _ _ W W _
+W T W _ _ _ _ B _ _ W W _ _
+W T _ W W _ W W W W W _ _ _
+W W _ _ _ _ W _ _ _ _ _ _ _
+_ W W W W W W _ _ _ _ _ _ _

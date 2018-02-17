@@ -1,0 +1,12 @@
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ W W W W W _ _ _ _ _ _ _ _
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ W _ _ _ W _ _ _ _ _ _ _ _
+_ _ _ _ W W W W W _ _ _ _ _ W _ _ _ W W W W W W W _ _
+_ _ _ _ W _ _ _ W W W W W _ W _ _ _ _ _ _ _ _ _ W _ _
+W W W W W _ W B W W _ _ W _ W _ W W W _ W _ W _ W _ _
+W _ _ _ B _ _ _ P _ B _ W _ W W _ B T W W _ _ _ W _ _
+W _ W _ W W T T b T b T W W W W _ W W W _ _ _ _ W W W
+W _ _ _ _ _ _ W W _ T _ W _ _ _ _ W _ W _ _ _ _ _ _ W
+W W W W W W W W W W b _ _ _ B _ W W _ W _ _ _ _ _ _ W
+_ _ _ _ _ _ _ _ _ W T _ B B W _ W _ _ W W W W W W W W
+_ _ _ _ _ _ _ _ _ W W W W _ _ _ W _ _ _ _ _ _ _ _ _ _
+_ _ _ _ _ _ _ _ _ W W W W W W W W _ _ _ _ _ _ _ _ _ _

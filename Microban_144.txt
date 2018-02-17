@@ -1,0 +1,12 @@
+_ _ _ W W W W _ _ _ _ _
+_ W W W _ _ W W W W W _
+_ W _ B B _ W _ _ _ W _
+_ W _ B _ T _ T B B W W
+_ W _ T T _ W T _ B _ W
+W W W _ W W W _ T _ _ W
+W _ _ T _ W W W _ W W W
+W _ B _ T W _ T T _ W _
+W W B B T P T _ B _ W _
+_ W _ _ _ W _ B B _ W _
+_ W W W W W _ _ W W W _
+_ _ _ _ _ W W W W _ _ _
