@@ -1,7 +1,7 @@
-#-----------------------------------------------------------------------------------------
-# Use Python 3
-# Suggested font: Menlo Regular
-#-----------------------------------------------------------------------------------------
+"""
+Use Python 3
+Suggested font: Menlo Regular
+"""
 
 import copy
 import itertools
@@ -17,9 +17,7 @@ from io import StringIO
 from argparse import ArgumentParser
 
 
-#-----------------------------------------------------------------------------------------
 # Constants
-#-----------------------------------------------------------------------------------------
 PURPLE = '\033[95m'
 CYAN = '\033[96m'
 DARKCYAN = '\033[36m'
@@ -53,15 +51,15 @@ END = '\033[0m'
 # References:
 #  - http://www.unicode.org/charts/beta/nameslist/n_25A0.html
 #  - https://en.wikipedia.org/wiki/Geometric_Shapes
-LARGE_WHITE_SQUARE                  = '\u2b1c'
-WHITE_SQUARE                        = '\u25a1'
-WHITE_SQUARE_WITH_ROUNDED_CORNERS   = '\u25a2'
-WHITE_SQUARE_ENCLOSING              = '\u20de'
-WHITE_MEDIUM_SQUARE                 = '\u25fb'
-BULLS_EYE                           = '\u25CE'
-WHITE_UP_POINTING_TRIANGLE          = '\u25B3'
+LARGE_WHITE_SQUARE = '\u2b1c'
+WHITE_SQUARE = '\u25a1'
+WHITE_SQUARE_WITH_ROUNDED_CORNERS = '\u25a2'
+WHITE_SQUARE_ENCLOSING = '\u20de'
+WHITE_MEDIUM_SQUARE = '\u25fb'
+BULLS_EYE = '\u25CE'
+WHITE_UP_POINTING_TRIANGLE = '\u25B3'
 WHITE_UP_POINTING_TRIANGLE_WITH_DOT = '\u25EC'
-SMALL_DELTA                         = '\u03B4'
+SMALL_DELTA = '\u03B4'
 
 # WALL = LARGE_WHITE_SQUARE
 # TARGET = GREEN + BULLS_EYE + END
@@ -128,14 +126,11 @@ KEY_DIRECTION = {
     68: L,
 }
 
-# Includes Dvorkak keyboard equivalents.
+# Includes Dvorak keyboard equivalents.
 USER_KEYS = ('u', 'g', 'q', "'", 'r', 'p')
 EDITOR_KEYS = ('u', 'g', 'q', "'", 'w', ',', ' ', 't', 'y', 'b', 'x', 'p', 'l', 's', 'o')
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def enable_echo():
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
@@ -143,9 +138,6 @@ def enable_echo():
     termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def get_user_input(prompt, args):
     enable_echo()
     input_text = input(prompt)
@@ -155,10 +147,7 @@ def get_user_input(prompt, args):
     return input_text
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
-class State():
+class State:
     def __init__(self, *args):
         # Expected arguments: person, boxes, history
         if len(args) == 3:
@@ -183,7 +172,9 @@ class State():
         return tuple([self.person] + sorted(self.boxes))
 
     def full_description(self, board):
-        return tuple([board.single_index(self.person)] + sorted(board.single_index(b) for b in self.boxes) + [self.history])
+        return tuple(
+            [board.single_index(self.person)] + sorted(board.single_index(b) for b in self.boxes) + [self.history]
+        )
 
     def __eq__(self, other):
         return self.signature == other.signature
@@ -192,10 +183,7 @@ class State():
         return '{} {}'.format(self.person, self.boxes)
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
-class Board():
+class Board:
     def __init__(self, NX, NY, raw_board, empty_board, targets, walls):
         self.NX = NX
         self.NY = NY
@@ -241,8 +229,9 @@ class Board():
 
     # Test whether a position is a corner.
     def is_corner(self, p):
-        return (self.illegal_position(move(p, U)) or self.illegal_position(move(p, D))) and \
-            (self.illegal_position(move(p, L)) or self.illegal_position(move(p, R)))
+        return (self.illegal_position(move(p, U)) or self.illegal_position(move(p, D))) and (
+            self.illegal_position(move(p, L)) or self.illegal_position(move(p, R))
+        )
 
     # Check whether or not a move will be a dead end. This check is not exhaustive (yet!).
     def dead_end(self, dir, box, boxes):
@@ -254,7 +243,12 @@ class Board():
         # Check for an immobile pair.
         for dir2 in U, R, D, L:
             pos2 = move(box, dir2)
-            if pos2 in boxes and (box not in self.targets or pos2 not in self.targets) and self.immobile_perp(dir2, box) and self.immobile_perp(dir2, pos2):
+            if (
+                pos2 in boxes
+                and (box not in self.targets or pos2 not in self.targets)
+                and self.immobile_perp(dir2, box)
+                and self.immobile_perp(dir2, pos2)
+            ):
                 return True
 
         # Check for an immobile 2 x 2 square consisting of boxes and walls.
@@ -349,22 +343,20 @@ class Board():
                 board_string = board_string.replace(letter, DISPLAY_TEXT[editor_mode][letter])
 
         output.write(board_string + '\n')
-
         print(output.getvalue())
 
 
-#-----------------------------------------------------------------------------------------
-# Input file format:
-#
-# W wall
-# _ empty space (converted to ' ' when file is read)
-# P person
-# p person on target
-# B box
-# b box on target
-# T target
-#-----------------------------------------------------------------------------------------
 def read_level(args):
+    """
+    Input file format:
+        W wall
+        _ empty space (converted to ' ' when file is read)
+        P person
+        p person on target
+        B box
+        b box on target
+        T target
+    """
     if args.edit and args.size is not None:
         person = (0, 0)
         boxes = None
@@ -432,9 +424,6 @@ def read_level(args):
     return board, start
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def pause(interval):
     if interval > 0:
         time.sleep(interval)
@@ -443,30 +432,19 @@ def pause(interval):
             sys.exit()
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def move(a, b):
     return a[0] + b[0], a[1] + b[1]
 
 
-#-----------------------------------------------------------------------------------------
-# turn: 1 for clockwise, -1 for counter-clockwise.
-#-----------------------------------------------------------------------------------------
 def rotate(turn, a):
+    """ |turn|: 1 for clockwise, -1 for counter-clockwise. """
     return -turn * a[1], turn * a[0]
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def reverse(a):
     return -a[0], -a[1]
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def solution_filename(args):
     if args.flash:
         directory = 'flash_solutions'
@@ -478,22 +456,16 @@ def solution_filename(args):
         return os.path.join(directory, args.filename + '_solution.txt')
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def print_history(history, line_length=0):
     i = 0
     if line_length == 0:
         print(history)
     else:
         while i < len(history):
-            print(history[i:i+line_length])
+            print(history[i : i + line_length])
             i += line_length
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def print_solution(args, history):
     print()
     print_history(history)
@@ -503,17 +475,15 @@ def print_solution(args, history):
         with open(output_filename, 'w') as output_file:
             i = 0
             while i < len(history):
-                output_file.write(history[i:i+80] + '\n')
+                output_file.write(history[i : i + 80] + '\n')
                 i += 80
 
         print()
         print('Solution file: {}'.format(output_filename))
 
 
-#-----------------------------------------------------------------------------------------
-# Print solution from file. This function does not check for errors in the solution.
-#-----------------------------------------------------------------------------------------
 def show_solution(start, board, args):
+    """ Print solution from file. This function does not check for errors in the solution. """
     # This option can either be a file name or a solution string.
     if args.user_solution:
         if os.path.exists(args.user_solution):
@@ -546,14 +516,12 @@ def show_solution(start, board, args):
         pause(args.interval)
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def user_move(editor_mode=False):
+    """ Handle keyboard input, including arrow keys. """
     key = sys.stdin.read(1)
 
     # Command keys
-    if  (not editor_mode and key in USER_KEYS) or (editor_mode and key in EDITOR_KEYS):
+    if (not editor_mode and key in USER_KEYS) or (editor_mode and key in EDITOR_KEYS):
         return key
 
     # Arrow keys
@@ -561,15 +529,13 @@ def user_move(editor_mode=False):
         key2 = sys.stdin.read(1)
         if ord(key2) == 91:
             key3 = sys.stdin.read(1)
-            #print(ord(key), ord(key2), ord(key3))
-            #print( KEY_DIRECTION.get(ord(key3), None))
+            # print(ord(key), ord(key2), ord(key3))
+            # print( KEY_DIRECTION.get(ord(key3), None))
             return KEY_DIRECTION.get(ord(key3), None)
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def user_solve(start, board, args):
+    """ Solve the level in user mode from the keyboard. """
     goal = len(board.targets)
     box_moved = []
     t = copy.deepcopy(start)
@@ -630,10 +596,8 @@ def user_solve(start, board, args):
                     number_of_moves += 1
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 def edit_level(start, board, args):
+    """ Edit a text file containing a sokoban level. """
     t = start
     t.person = (0, 0)
     while True:
@@ -666,7 +630,7 @@ def edit_level(start, board, args):
                 board.raw_board[t.person] = 'b'
             else:
                 board.raw_board[t.person] = 'B'
-                #number_boxes += 1
+                # number_boxes += 1
         elif direction in ('t', 'y'):
             if board.raw_board[t.person] in ('P', 'p'):
                 board.raw_board[t.person] = 'p'
@@ -684,10 +648,10 @@ def edit_level(start, board, args):
                 t = State(new_position, None, None)
 
 
-#-----------------------------------------------------------------------------------------
-# Conduct a breadth first search (unless args.random_search is True or args.depth_first is True).
-#-----------------------------------------------------------------------------------------
 def search(start, board, args):
+    """
+    Conduct a breadth first search (unless args.random_search is True or args.depth_first is True).
+    """
     goal = len(board.targets)
     total_visited = 0
     explored = set()
@@ -696,24 +660,35 @@ def search(start, board, args):
         q = queue.LifoQueue()
     else:
         q = queue.Queue()
-    #q.put(start)
+    # q.put(start)
     q.put(start.full_description(board))
 
     while not q.empty():
-        #t = q.get()
+        # t = q.get()
         t = State(board, q.get())
         total_visited += 1
         if args.show_board:
-            board.print_current(t, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited))
-            #print('deq:', t)
+            board.print_current(
+                t, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited)
+            )
+            # print('deq:', t)
             pause(args.interval)
         elif total_visited % args.print_interval == 0:
             if args.level:
-                board.print_current(t, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited), False)
+                board.print_current(
+                    t,
+                    args.text_output,
+                    (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited),
+                    False,
+                )
                 print_history(t.history)
                 print()
             else:
-                print('Time: {}  Depth: {:,}  Queue: {:,}  Visited: {:,}'.format(datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited))
+                print(
+                    'Time: {}  Depth: {:,}  Queue: {:,}  Visited: {:,}'.format(
+                        datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited
+                    )
+                )
         directions = [U, R, D, L]
         if args.random_search:
             random.shuffle(directions)
@@ -730,7 +705,17 @@ def search(start, board, args):
                         if len(board.targets & set(new_boxes)) == goal:
                             # Solved!
                             final_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
-                            board.print_current(final_state, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(final_state.history), q.qsize(), total_visited + 1), args.show_board)
+                            board.print_current(
+                                final_state,
+                                args.text_output,
+                                (
+                                    datetime.now().strftime('%H:%M:%S'),
+                                    len(final_state.history),
+                                    q.qsize(),
+                                    total_visited + 1,
+                                ),
+                                args.show_board,
+                            )
                             print('Solved!')
                             print_solution(args, final_state.history)
                             sys.exit()
@@ -744,25 +729,26 @@ def search(start, board, args):
                     new_signature = new_state.signature()
                     if new_signature not in explored:
                         explored.add(new_signature)
-                        #q.put(new_state)
+                        # q.put(new_state)
                         q.put(new_state.full_description(board))
 
     print('No solution found. Check the input file.')
 
 
-#-----------------------------------------------------------------------------------------
-# Conduct a breadth first search in a two step process:
-#   1) Conduct a breadth first search for all positions that can be reached without pushing any boxes.
-#   2) From each state, explore all possible box pushes.
-#-----------------------------------------------------------------------------------------
 def flash_search(start, board, args):
+    """
+    Conduct a breadth first search in a two step process:
+        1) Conduct a breadth first search for all positions that can be reached without pushing any boxes.
+        2) From each state, explore all possible box pushes.
+
+    """
     goal = len(board.targets)
     total_visited = 0
-    #total_visited_by_push = 0
+    # total_visited_by_push = 0
     explored = set()
     explored.add(start.signature())
     q = queue.Queue()
-    #q.put(start)
+    # q.put(start)
     q.put(start.full_description(board))
 
     # This function is named after 'The Flash' because he can go anywhere nearly instantaneously.
@@ -804,15 +790,26 @@ def flash_search(start, board, args):
         t = State(board, q.get())
         total_visited += 1
         if args.show_board:
-            board.print_current(t, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited))
+            board.print_current(
+                t, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited)
+            )
             pause(args.interval)
         elif total_visited % args.print_interval == 0:
             if args.level:
-                board.print_current(t, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited), False)
+                board.print_current(
+                    t,
+                    args.text_output,
+                    (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited),
+                    False,
+                )
                 print_history(t.history)
                 print()
             else:
-                print('Time: {}  Depth: {:,}  Queue: {:,}  Visited: {:,}'.format(datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited))
+                print(
+                    'Time: {}  Depth: {:,}  Queue: {:,}  Visited: {:,}'.format(
+                        datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited
+                    )
+                )
         for direction in [U, R, D, L]:
             new_position = move(t.person, direction)
             # Only consider moves that push a box.
@@ -825,7 +822,17 @@ def flash_search(start, board, args):
                     if len(board.targets & set(new_boxes)) == goal:
                         # Solved!
                         final_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
-                        board.print_current(final_state, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(final_state.history), q.qsize(), total_visited + 1), args.show_board)
+                        board.print_current(
+                            final_state,
+                            args.text_output,
+                            (
+                                datetime.now().strftime('%H:%M:%S'),
+                                len(final_state.history),
+                                q.qsize(),
+                                total_visited + 1,
+                            ),
+                            args.show_board,
+                        )
                         print('Solved!')
                         print_solution(args, final_state.history)
                         sys.exit()
@@ -833,7 +840,7 @@ def flash_search(start, board, args):
                         new_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
                         new_signature = new_state.signature()
                         if new_signature not in explored:
-                            #total_visited_by_push += 1
+                            # total_visited_by_push += 1
                             explored.add(new_signature)
                             q.put(new_state.full_description(board))
                             # Add all states that can be reached without pushing any boxes.
@@ -842,26 +849,53 @@ def flash_search(start, board, args):
     print('No solution found. Check the input file.')
 
 
-#-----------------------------------------------------------------------------------------
-#
-#-----------------------------------------------------------------------------------------
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-b', '--show-board', action='store_true', default=False, help='Show the board while solving')
-    parser.add_argument('-d', '--depth-first', action='store_true', default=False, help='Use depth first search instead of breadth first search')
-    parser.add_argument('-e', '--edit', action='store_true', default=False, help='Edit level (or create new file of size specified by "size")')
-    parser.add_argument('-f', '--filename', dest='filename', default='', help='File with level to solve', metavar='FILE')
-    parser.add_argument('-i', '--interval', type=float, default=0, help='Interval (seconds) per step while showing solution (if 0, keyboard input required to advance)')
+    parser.add_argument(
+        '-d',
+        '--depth-first',
+        action='store_true',
+        default=False,
+        help='Use depth first search instead of breadth first search',
+    )
+    parser.add_argument(
+        '-e',
+        '--edit',
+        action='store_true',
+        default=False,
+        help='Edit level (or create new file of size specified by "size")',
+    )
+    parser.add_argument(
+        '-f', '--filename', dest='filename', default='', help='File with level to solve', metavar='FILE'
+    )
+    parser.add_argument(
+        '-i',
+        '--interval',
+        type=float,
+        default=0,
+        help='Interval (seconds) per step while showing solution (if 0, keyboard input required to advance)',
+    )
     parser.add_argument('-l', '--level', action='store_true', default=False, help='Show current level while solving')
-    parser.add_argument('-n', '--no-file', action='store_true', default=False, help='Do not create output solution file')
-    parser.add_argument('-p', '--print-interval', type=int, default=1, help='Print summary interval (in count of visited states)')
-    parser.add_argument('-r', '--random-search', action='store_true', default=False, help='Perform a random depth-first search')
-    parser.add_argument('-s', '--solution', action='store_true', default=False, help='Show solution')
+    parser.add_argument(
+        '-n', '--no-file', action='store_true', default=False, help='Do not create output solution file'
+    )
+    parser.add_argument(
+        '-p', '--print-interval', type=int, default=1, help='Print summary interval (in count of visited states)'
+    )
+    parser.add_argument(
+        '-r', '--random-search', action='store_true', default=False, help='Perform a random depth-first search'
+    )
+    parser.add_argument('-s', '--solution', action='store_true', default=False, help='Show previously computed solution')
     parser.add_argument('-t', '--text-output', action='store_true', default=False, help='Print board in plain text')
-    parser.add_argument('-u', '--user', action='store_true', default=False, help='User solves the puzzle (with arrow keys and q(quit))')
+    parser.add_argument(
+        '-u', '--user', action='store_true', default=False, help='User solves the puzzle (with arrow keys and q(quit))'
+    )
     parser.add_argument('-v', '--view', action='store_true', default=False, help='View level and quit')
     parser.add_argument('-z', '--user-solution', default='', help='User supplied solution string or file name')
-    parser.add_argument('--enforce', action='store_true', default=False, help='Do not allow dead end moves in user mode')
+    parser.add_argument(
+        '--enforce', action='store_true', default=False, help='Do not allow dead end moves in user mode'
+    )
     parser.add_argument('--flash', action='store_true', default=False, help="Search in 'flash' mode.")
     parser.add_argument('--size', dest='size', help="'Size of new file to edit, in format 'NX,NY'")
     args = parser.parse_args()
