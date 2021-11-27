@@ -148,36 +148,16 @@ def get_user_input(prompt, args):
 
 
 class State:
-    def __init__(self, *args):
-        # Expected arguments: person, boxes, history
-        if len(args) == 3:
-            self.person = args[0]
-            self.boxes = args[1]
-            self.history = args[2]
-        # Expected arguments: board, full_description
-        elif len(args) == 2:
-            self.person = args[0].board_position(args[1][0])
-            self.boxes = [args[0].board_position(b) for b in args[1][1:-1]]
-            self.history = args[1][-1]
-        # Default
-        else:
-            self.person = (0, 0)
-            self.boxes = []
-            self.history = []
+    def __init__(self, person=(0, 0), boxes=None, depth=0):
+        self.person = person
+        self.boxes = [] if boxes is None else boxes
+        self.depth = depth
 
     def signature(self):
-        return hash(tuple([self.person] + sorted(self.boxes)))
-
-    def raw_signature(self):
-        return tuple([self.person] + sorted(self.boxes))
-
-    def full_description(self, board):
-        return tuple(
-            [board.single_index(self.person)] + sorted(board.single_index(b) for b in self.boxes) + [self.history]
-        )
+        return self.person, tuple(sorted(self.boxes))
 
     def __eq__(self, other):
-        return self.signature == other.signature
+        return self.signature() == other.signature()
 
     def __str__(self):
         return '{} {}'.format(self.person, self.boxes)
@@ -413,13 +393,13 @@ def read_level(args):
 
             if len(boxes) > len(targets):
                 print('Check the input file. There are {} boxes, but only {} targets.'.format(len(boxes), len(targets)))
-                sys.exit()
+                sys.exit(1)
             elif len(targets) > len(boxes):
                 print('Check the input file. There are {} targets, but only {} boxes.'.format(len(targets), len(boxes)))
-                sys.exit()
+                sys.exit(1)
 
     board = Board(NX, NY, raw_board, empty_board, targets, walls)
-    start = State(person, boxes, '')
+    start = State(person, boxes)
 
     return board, start
 
@@ -508,10 +488,10 @@ def show_solution(start, board, args):
             new_boxes = t.boxes[:]
             new_boxes.remove(new_position)
             new_boxes.append(across)
-            t = State(new_position, new_boxes, t.history + direction_name)
+            t = State(new_position, new_boxes, t.depth + 1)
             number_pushes += 1
         else:
-            t = State(new_position, t.boxes, t.history + direction_name)
+            t = State(new_position, t.boxes, t.depth + 1)
         board.print_current(t, args.text_output, (i + 1, number_pushes), True, False)
         pause(args.interval)
 
@@ -536,10 +516,10 @@ def user_move(editor_mode=False):
 
 def user_solve(start, board, args):
     """ Solve the level in user mode from the keyboard. """
-    goal = len(board.targets)
     box_moved = []
     t = copy.deepcopy(start)
     number_of_moves = 0
+    history = ''
 
     while True:
         board.print_current(t, args.text_output, number_of_moves, True, False)
@@ -547,15 +527,15 @@ def user_solve(start, board, args):
         while direction is None:
             direction = user_move()
         if direction in ('q', "'"):
-            print_history(t.history)
+            print_history(t.depth)
             sys.exit()
         elif direction in ('r', 'p'):
             t = copy.deepcopy(start)
             number_of_moves = 0
         elif direction in ('u', 'g'):
-            if not t.history:
+            if not history:
                 continue
-            last_direction = DIRECTION[t.history[-1]]
+            last_direction = DIRECTION[history[-1]]
             undo_direction = reverse(last_direction)
             new_position = move(t.person, undo_direction)
             across = move(t.person, last_direction)
@@ -563,9 +543,10 @@ def user_solve(start, board, args):
                 new_boxes = t.boxes[:]
                 new_boxes.remove(across)
                 new_boxes.append(t.person)
-                t = State(new_position, new_boxes, t.history[:-1])
+                t = State(new_position, new_boxes, t.depth - 1)
             else:
-                t = State(new_position, t.boxes, t.history[:-1])
+                t = State(new_position, t.boxes, t.depth - 1)
+            history = history[:-1]
             number_of_moves -= 1
         else:
             new_position = move(t.person, direction)
@@ -576,22 +557,25 @@ def user_solve(start, board, args):
                         new_boxes = t.boxes[:]
                         new_boxes.remove(new_position)
                         new_boxes.append(across)
-                        if len(board.targets & set(new_boxes)) == goal:
+                        if board.targets == set(new_boxes):
                             # Solved!
-                            final_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
+                            final_state = State(new_position, new_boxes, t.depth + 1)
+                            history += DIRECTION_NAME[direction]
                             board.print_current(final_state, args.text_output, number_of_moves + 1)
                             print('Solved!')
                             print()
-                            print_history(final_state.history)
+                            print_history(history)
                             sys.exit()
                         elif args.enforce and board.dead_end(direction, across, new_boxes):
                             continue
                         else:
-                            t = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
+                            t = State(new_position, new_boxes, t.depth + 1)
+                            history += DIRECTION_NAME[direction]
                             box_moved.append(True)
                             number_of_moves += 1
                 else:
-                    t = State(new_position, t.boxes, t.history + DIRECTION_NAME[direction])
+                    t = State(new_position, t.boxes, t.depth + 1)
+                    history += DIRECTION_NAME[direction]
                     box_moved.append(False)
                     number_of_moves += 1
 
@@ -652,24 +636,47 @@ def search(start, board, args):
     """
     Conduct a breadth first search (unless args.random_search is True or args.depth_first is True).
     """
-    goal = len(board.targets)
     total_visited = 0
-    explored = set()
-    explored.add(start.signature())
+    explored = {start.signature()}
     if args.depth_first or args.random_search:
         q = queue.LifoQueue()
     else:
         q = queue.Queue()
-    # q.put(start)
-    q.put(start.full_description(board))
+    q.put(start)
+    backpointers = {}
 
     while not q.empty():
-        # t = q.get()
-        t = State(board, q.get())
+        t = q.get()
         total_visited += 1
+
+        # Check for a solution
+        if board.targets == set(t.boxes):
+            board.print_current(
+                t,
+                args.text_output,
+                (
+                    datetime.now().strftime('%H:%M:%S'),
+                    t.depth,
+                    q.qsize(),
+                    total_visited,
+                ),
+                args.show_board,
+            )
+            actions = []
+            trace_signature = t.signature()
+            while trace_signature != start.signature():
+                action, previous_signature = backpointers[trace_signature]
+                actions.append(action)
+                trace_signature = previous_signature
+            actions.reverse()
+            print('Solved!')
+            print_solution(args, ''.join(actions))
+            print()
+            sys.exit()
+
         if args.show_board:
             board.print_current(
-                t, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited)
+                t, args.text_output, (datetime.now().strftime('%H:%M:%S'), t.depth, q.qsize(), total_visited)
             )
             # print('deq:', t)
             pause(args.interval)
@@ -678,15 +685,14 @@ def search(start, board, args):
                 board.print_current(
                     t,
                     args.text_output,
-                    (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited),
+                    (datetime.now().strftime('%H:%M:%S'), t.depth, q.qsize(), total_visited),
                     False,
                 )
-                print_history(t.history)
                 print()
             else:
                 print(
                     'Time: {}  Depth: {:,}  Queue: {:,}  Visited: {:,}'.format(
-                        datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited
+                        datetime.now().strftime('%H:%M:%S'), t.depth, q.qsize(), total_visited
                     )
                 )
         directions = [U, R, D, L]
@@ -702,35 +708,18 @@ def search(start, board, args):
                         new_boxes = t.boxes[:]
                         new_boxes.remove(new_position)
                         new_boxes.append(across)
-                        if len(board.targets & set(new_boxes)) == goal:
-                            # Solved!
-                            final_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
-                            board.print_current(
-                                final_state,
-                                args.text_output,
-                                (
-                                    datetime.now().strftime('%H:%M:%S'),
-                                    len(final_state.history),
-                                    q.qsize(),
-                                    total_visited + 1,
-                                ),
-                                args.show_board,
-                            )
-                            print('Solved!')
-                            print_solution(args, final_state.history)
-                            sys.exit()
-                        elif board.dead_end(direction, across, new_boxes):
+                        if board.dead_end(direction, across, new_boxes):
                             continue
                         else:
-                            new_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
+                            new_state = State(new_position, new_boxes, t.depth + 1)
                 else:
-                    new_state = State(new_position, t.boxes, t.history + DIRECTION_NAME[direction])
+                    new_state = State(new_position, t.boxes, t.depth + 1)
                 if new_state is not None:
                     new_signature = new_state.signature()
                     if new_signature not in explored:
                         explored.add(new_signature)
-                        # q.put(new_state)
-                        q.put(new_state.full_description(board))
+                        q.put(new_state)
+                        backpointers[new_signature] = DIRECTION_NAME[direction], t.signature()
 
     print('No solution found. Check the input file.')
 
@@ -742,19 +731,16 @@ def flash_search(start, board, args):
         2) From each state, explore all possible box pushes.
 
     """
-    goal = len(board.targets)
     total_visited = 0
     # total_visited_by_push = 0
-    explored = set()
-    explored.add(start.signature())
+    explored = {start.signature()}
     q = queue.Queue()
-    # q.put(start)
-    q.put(start.full_description(board))
+    q.put(start)
+    backpointers = {}
 
     # This function is named after 'The Flash' because he can go anywhere nearly instantaneously.
     def add_flash_states(t):
-        flash_explored = set()
-        flash_explored.add(t.signature())
+        flash_explored = {t.signature()}
         flash_q = queue.Queue()
         flash_q.put(t)
         while not flash_q.empty():
@@ -762,7 +748,7 @@ def flash_search(start, board, args):
             for direction in [U, R, D, L]:
                 new_position = move(u.person, direction)
                 if board.legal_position(new_position) and new_position not in u.boxes:
-                    new_state = State(new_position, u.boxes, u.history + DIRECTION_NAME[direction])
+                    new_state = State(new_position, u.boxes, u.depth + 1)
                     new_signature = new_state.signature()
                     if new_signature not in flash_explored:
                         flash_explored.add(new_signature)
@@ -779,7 +765,8 @@ def flash_search(start, board, args):
                                         new_boxes.append(across)
                                         if not board.dead_end(direction2, across, new_boxes):
                                             explored.add(new_signature)
-                                            q.put(new_state.full_description(board))
+                                            q.put(new_state)
+                                            backpointers[new_signature] = DIRECTION_NAME[direction], t.signature()
                                             break
 
     # Add all states that can be reached without pushing any boxes, but that
@@ -787,11 +774,37 @@ def flash_search(start, board, args):
     add_flash_states(start)
 
     while not q.empty():
-        t = State(board, q.get())
+        t = q.get()
         total_visited += 1
+
+        # Check for a solution
+        if board.targets == set(t.boxes):
+            board.print_current(
+                t,
+                args.text_output,
+                (
+                    datetime.now().strftime('%H:%M:%S'),
+                    t.depth,
+                    q.qsize(),
+                    total_visited,
+                ),
+                args.show_board,
+            )
+            actions = []
+            trace_signature = t.signature()
+            while trace_signature != start.signature():
+                action, previous_signature = backpointers[trace_signature]
+                actions.append(action)
+                trace_signature = previous_signature
+            actions.reverse()
+            print('Solved!')
+            # print_solution(args, ''.join(actions))
+            print_solution(args, "TODO: CALCULATE CORRECT FLASH HISTORY")
+            sys.exit()
+
         if args.show_board:
             board.print_current(
-                t, args.text_output, (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited)
+                t, args.text_output, (datetime.now().strftime('%H:%M:%S'), t.depth, q.qsize(), total_visited)
             )
             pause(args.interval)
         elif total_visited % args.print_interval == 0:
@@ -799,15 +812,14 @@ def flash_search(start, board, args):
                 board.print_current(
                     t,
                     args.text_output,
-                    (datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited),
+                    (datetime.now().strftime('%H:%M:%S'), t.depth, q.qsize(), total_visited),
                     False,
                 )
-                print_history(t.history)
                 print()
             else:
                 print(
                     'Time: {}  Depth: {:,}  Queue: {:,}  Visited: {:,}'.format(
-                        datetime.now().strftime('%H:%M:%S'), len(t.history), q.qsize(), total_visited
+                        datetime.now().strftime('%H:%M:%S'), t.depth, q.qsize(), total_visited
                     )
                 )
         for direction in [U, R, D, L]:
@@ -819,30 +831,14 @@ def flash_search(start, board, args):
                     new_boxes = t.boxes[:]
                     new_boxes.remove(new_position)
                     new_boxes.append(across)
-                    if len(board.targets & set(new_boxes)) == goal:
-                        # Solved!
-                        final_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
-                        board.print_current(
-                            final_state,
-                            args.text_output,
-                            (
-                                datetime.now().strftime('%H:%M:%S'),
-                                len(final_state.history),
-                                q.qsize(),
-                                total_visited + 1,
-                            ),
-                            args.show_board,
-                        )
-                        print('Solved!')
-                        print_solution(args, final_state.history)
-                        sys.exit()
-                    elif not board.dead_end(direction, across, new_boxes):
-                        new_state = State(new_position, new_boxes, t.history + DIRECTION_NAME[direction])
+                    if not board.dead_end(direction, across, new_boxes):
+                        new_state = State(new_position, new_boxes, t.depth + 1)
                         new_signature = new_state.signature()
                         if new_signature not in explored:
                             # total_visited_by_push += 1
                             explored.add(new_signature)
-                            q.put(new_state.full_description(board))
+                            q.put(new_state)
+                            backpointers[new_signature] = DIRECTION_NAME[direction], t.signature()
                             # Add all states that can be reached without pushing any boxes.
                             add_flash_states(new_state)
 
@@ -886,7 +882,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '-r', '--random-search', action='store_true', default=False, help='Perform a random depth-first search'
     )
-    parser.add_argument('-s', '--solution', action='store_true', default=False, help='Show previously computed solution')
+    parser.add_argument(
+        '-s', '--solution', action='store_true', default=False, help='Show previously computed solution'
+    )
     parser.add_argument('-t', '--text-output', action='store_true', default=False, help='Print board in plain text')
     parser.add_argument(
         '-u', '--user', action='store_true', default=False, help='User solves the puzzle (with arrow keys and q(quit))'
